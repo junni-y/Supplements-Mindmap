@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文书卡片盒 · 本地版</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ==================== 视图 1：卡片墙 ==================== -->
+    <section id="wall-view" class="view active">
+      <header class="topbar">
+        <div class="brand">
+          <h1>文书卡片盒</h1>
+          <span class="badge">纯本地 · IndexedDB</span>
+        </div>
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="全文检索：题目 / 笔记 / 成稿 / 标签..." />
+          <button id="clear-search-btn" class="btn-ghost hidden" title="清空搜索">✕</button>
+        </div>
+        <div class="actions">
+          <button id="new-card-btn" class="btn-primary">+ 新建卡片</button>
+          <button id="import-btn" class="btn-secondary">导入 JSON</button>
+          <input type="file" id="import-file-input" accept=".json" class="hidden" />
+          <button id="export-btn" class="btn-secondary">导出 JSON</button>
+          <button id="trash-btn" class="btn-secondary">回收站 (<span id="trash-count">0</span>)</button>
+        </div>
+      </header>
+
+      <!-- 标签筛选栏 -->
+      <div class="tag-filter-bar">
+        <div class="tag-mode-switch">
+          <span>标签筛选：</span>
+          <button id="tag-mode-btn" class="btn-tag-mode" data-mode="AND">模式：同时满足 (AND)</button>
+        </div>
+        <div id="wall-tag-list" class="tag-pills"></div>
+      </div>
+
+      <!-- 搜索结果提示栏 -->
+      <div id="search-status-bar" class="search-status hidden"></div>
+
+      <!-- 卡片网格 -->
+      <main id="card-grid" class="card-grid"></main>
+    </section>
+
+    <!-- ==================== 视图 2：翻卡页 ==================== -->
+    <section id="card-view" class="view hidden">
+      <header class="card-topbar">
+        <div class="nav-left">
+          <button id="back-wall-btn" class="btn-secondary">← 返回卡片墙</button>
+          <button id="back-history-btn" class="btn-secondary" disabled>↩ 返回上一卡</button>
+        </div>
+
+        <!-- 三面切换控件（固定顺序：① 问题面 → ② 笔记面 → ③ 成稿面） -->
+        <div class="face-switcher" role="tablist">
+          <button class="face-tab active" data-face="prompt">① 问题面</button>
+          <span class="face-arrow">→</span>
+          <button class="face-tab" data-face="notes">② 笔记面</button>
+          <span class="face-arrow">→</span>
+          <button class="face-tab" data-face="draft">③ 成稿面</button>
+        </div>
+
+        <div class="nav-right">
+          <span id="save-indicator" class="save-status">已自动保存</span>
+          <button id="delete-card-btn" class="btn-danger">删除卡片</button>
+        </div>
+      </header>
+
+      <!-- 卡片公共元信息栏：标签管理 -->
+      <div class="card-meta-bar">
+        <div class="meta-tags">
+          <span class="meta-label">标签：</span>
+          <div id="card-tags-container" class="tag-pills"></div>
+          <input type="text" id="new-tag-input" placeholder="+ 输入标签按回车" />
+        </div>
+        <div class="meta-info" id="card-timestamps"></div>
+      </div>
+
+      <!-- 翻卡工作区主体 -->
+      <div class="card-workspace">
+        <!-- ① 问题面 -->
+        <div id="face-prompt" class="card-face active">
+          <div class="face-header">
+            <h2>① 问题面（仅存放文书题目）</h2>
+            <span class="hint">纯文本编辑，修改后自动保存；更改题目不会导致任何引用断链。</span>
+          </div>
+          <textarea id="prompt-editor" placeholder="在此输入或粘贴文书题目..."></textarea>
+        </div>
+
+        <!-- ② 笔记面 -->
+        <div id="face-notes" class="card-face hidden">
+          <div class="face-header">
+            <div class="notes-title-group">
+              <h2>② 笔记面（想法与手写素材）</h2>
+              <span class="hint">输入 <code>[[</code> 可自动补全引用卡片</span>
+            </div>
+            <div class="mode-toggle">
+              <button id="notes-edit-mode-btn" class="btn-mode active">编辑态 (Markdown)</button>
+              <button id="notes-preview-mode-btn" class="btn-mode">预览态 (可点击跳转/块绑定)</button>
+            </div>
+          </div>
+
+          <div class="notes-body-layout">
+            <div class="notes-main-col">
+              <!-- 编辑态 -->
+              <div id="notes-editor-wrapper" class="editor-wrapper">
+                <textarea id="notes-editor" placeholder="在此手写你的思路、素材提纲（支持基础 Markdown 与 [[卡片引用]]）..."></textarea>
+                <!-- [[ 卡片自动补全浮层 -->
+                <div id="autocomplete-popup" class="autocomplete-popup hidden"></div>
+              </div>
+
+              <!-- 预览态（按块切分渲染） -->
+              <div id="notes-preview-wrapper" class="preview-wrapper hidden"></div>
+
+              <!-- 底部固定：相关卡片手动清单 -->
+              <div class="related-cards-box">
+                <div class="section-sub-header">
+                  <h3>相关卡片（手动关联清单）</h3>
+                  <div class="add-related-control">
+                    <select id="related-card-select">
+                      <option value="">-- 选择要关联的卡片 --</option>
+                    </select>
+                    <button id="add-related-btn" class="btn-secondary btn-sm">添加关联</button>
+                  </div>
+                </div>
+                <ul id="related-cards-list" class="link-list"></ul>
+              </div>
+            </div>
+
+            <!-- 右侧常驻：双向回链（被哪些卡片引用） -->
+            <aside class="backlinks-sidebar">
+              <h3>被哪些卡片引用（反向回链）</h3>
+              <p class="hint">自动汇总所有指向本卡的正文链接、块绑定与关联项</p>
+              <ul id="backlinks-list" class="backlinks-list"></ul>
+            </aside>
+          </div>
+        </div>
+
+        <!-- ③ 成稿面 -->
+        <div id="face-draft" class="card-face hidden">
+          <div class="face-header">
+            <h2>③ 成稿面（最终文书稿）</h2>
+            <div class="char-counter">
+              纯文本字符数：<strong id="draft-char-count">0</strong>
+            </div>
+          </div>
+
+          <!-- 轻量富文本工具栏 -->
+          <div id="rich-toolbar" class="rich-toolbar">
+            <select id="rt-font-size" title="字号">
+              <option value="3">默认字号</option>
+              <option value="2">小号 (13px)</option>
+              <option value="4">中大 (18px)</option>
+              <option value="5">大号 (24px)</option>
+              <option value="6">特大 (32px)</option>
+            </select>
+            <input type="color" id="rt-color" value="#1f2937" title="文字颜色" />
+            <span class="toolbar-divider"></span>
+            <button type="button" data-cmd="bold" title="加粗"><b>B</b></button>
+            <button type="button" data-cmd="italic" title="斜体"><i>I</i></button>
+            <button type="button" data-cmd="underline" title="下划线"><u>U</u></button>
+            <button type="button" data-cmd="strikeThrough" title="删除线"><s>S</s></button>
+            <span class="toolbar-divider"></span>
+            <button type="button" data-cmd="insertUnorderedList" title="无序列表">• 列表</button>
+            <button type="button" data-cmd="insertOrderedList" title="有序列表">1. 列表</button>
+            <span class="toolbar-divider"></span>
+            <button type="button" data-cmd="justifyLeft" title="左对齐">左对齐</button>
+            <button type="button" data-cmd="justifyCenter" title="居中对齐">居中</button>
+            <button type="button" data-cmd="justifyRight" title="右对齐">右对齐</button>
+            <span class="toolbar-divider"></span>
+            <button type="button" data-cmd="undo" title="撤销">撤销</button>
+            <button type="button" data-cmd="redo" title="重做">重做</button>
+          </div>
+
+          <!-- 独立富文本编辑区（不渲染Markdown、不支持[[链接]]、不设块绑定） -->
+          <div id="draft-editor" class="draft-editor" contenteditable="true" data-placeholder="在此撰写或粘贴最终成稿（支持富文本排版，与笔记面数据完全隔离）..."></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 模态框 1：回收站 ==================== -->
+    <div id="trash-modal" class="modal hidden">
+      <div class="modal-content modal-lg">
+        <div class="modal-header">
+          <h2>回收站</h2>
+          <div class="modal-header-actions">
+            <button id="empty-trash-btn" class="btn-danger">清空回收站</button>
+            <button class="btn-ghost close-modal-btn" data-target="trash-modal">✕</button>
+          </div>
+        </div>
+        <p class="hint">已删除的卡片在此暂存。恢复后所有引用与回链自动复原；彻底删除后，其他卡片中指向它的引用将保留文本并显示「卡片已删除」。</p>
+        <div id="trash-list" class="trash-list"></div>
+      </div>
+    </div>
+
+    <!-- ==================== 模态框 2：块绑定选择器 ==================== -->
+    <div id="block-bind-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>绑定目标卡片到当前段落块</h2>
+          <button class="btn-ghost close-modal-btn" data-target="block-bind-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="block-bind-preview-text" class="block-quote"></p>
+          <label for="block-target-select">选择目标卡片：</label>
+          <select id="block-target-select" class="full-select"></select>
+        </div>
+        <div class="modal-footer">
+          <button id="unbind-block-btn" class="btn-danger">解除绑定</button>
+          <button id="save-block-bind-btn" class="btn-primary">确认绑定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 模态框 3：导入差异预览与冲突合并 ==================== -->
+    <div id="import-modal" class="modal hidden">
+      <div class="modal-content modal-lg">
+        <div class="modal-header">
+          <h2>导入数据合并预览</h2>
+          <button class="btn-ghost close-modal-btn" data-target="import-modal">✕</button>
+        </div>
+        <div id="import-summary" class="import-summary"></div>
+        <div id="import-conflicts-container" class="import-conflicts"></div>
+        <div class="modal-footer">
+          <button class="btn-secondary close-modal-btn" data-target="import-modal">取消导入</button>
+          <button id="confirm-import-btn" class="btn-primary">确认执行合并</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
