@@ -8,6 +8,9 @@
   var STORE_NAME = "cards";
 
   var db = null;
+  var syncChannel = typeof BroadcastChannel !== "undefined"
+    ? new BroadcastChannel("essay-card-box-sync")
+    : null;
   var cardsMap = {}; // id -> Card 对象（全量缓存，包括回收站内卡片）
 
   // 卡片墙筛选与搜索状态
@@ -181,6 +184,11 @@
       var tx = db.transaction(STORE_NAME, "readwrite");
       var store = tx.objectStore(STORE_NAME);
       var req = store.put(card);
+      tx.oncomplete = function () {
+        if (syncChannel) {
+          syncChannel.postMessage({ type: "card-updated", card: card });
+        }
+      };
       req.onsuccess = function () {
         showSaveIndicator("已自动保存");
         resolve(card);
@@ -192,15 +200,128 @@
     });
   }
 
+  function saveCardsToDB(cards) {
+    var tx = db.transaction(STORE_NAME, "readwrite");
+    var store = tx.objectStore(STORE_NAME);
+    cards.forEach(function (card) {
+      card.updatedAt = Date.now();
+      store.put(card);
+    });
+
+    return new Promise(function (resolve, reject) {
+      tx.oncomplete = function () {
+        cards.forEach(function (card) {
+          cardsMap[card.id] = card;
+          if (syncChannel) {
+            syncChannel.postMessage({ type: "card-updated", card: card });
+          }
+        });
+        resolve(cards);
+      };
+      tx.onabort = function () {
+        reject(tx.error || new Error("批量保存卡片失败"));
+      };
+      tx.onerror = function () {
+        reject(tx.error || new Error("批量保存卡片失败"));
+      };
+    });
+  }
+
   function deleteCardPermanentlyFromDB(cardId) {
     delete cardsMap[cardId];
     return new Promise(function (resolve, reject) {
       var tx = db.transaction(STORE_NAME, "readwrite");
       var store = tx.objectStore(STORE_NAME);
       var req = store.delete(cardId);
+      tx.oncomplete = function () {
+        if (syncChannel) {
+          syncChannel.postMessage({ type: "card-deleted", cardId: cardId });
+        }
+      };
       req.onsuccess = function () { resolve(); };
       req.onerror = function (e) { reject(e.target.error); };
     });
+  }
+
+  function handleSyncMessage(event) {
+    var message = event.data;
+    if (!message) return;
+
+    if (message.type === "card-deleted" && message.cardId) {
+      delete cardsMap[message.cardId];
+      renderWall();
+      if (currentViewState.cardId === message.cardId) {
+        switchToWallView();
+      } else if (currentViewState.cardId) {
+        var currentCard = cardsMap[currentViewState.cardId];
+        if (currentCard) renderExistingTagOptions(currentCard);
+      }
+      return;
+    }
+
+    if (message.type !== "card-updated" || !message.card || !message.card.id) return;
+
+    var previous = cardsMap[message.card.id];
+    var updated = normalizeCard(message.card);
+    cardsMap[updated.id] = updated;
+    renderWall();
+
+    if (updated.deletedAt && currentViewState.cardId === updated.id) {
+      switchToWallView();
+      return;
+    }
+
+    var currentCard = cardsMap[currentViewState.cardId];
+    if (!currentCard) return;
+
+    if (currentCard.id !== updated.id) {
+      renderExistingTagOptions(currentCard);
+      return;
+    }
+
+    var tagsChanged = !previous ||
+      JSON.stringify(previous.tags) !== JSON.stringify(updated.tags);
+    var promptChanged = !previous || previous.prompt !== updated.prompt;
+    var notesChanged = !previous || previous.notesMd !== updated.notesMd;
+    var draftChanged = !previous || previous.draftHtml !== updated.draftHtml;
+    var relatedChanged = !previous ||
+      JSON.stringify(previous.relatedCardIds) !== JSON.stringify(updated.relatedCardIds);
+    var bindingsChanged = !previous ||
+      JSON.stringify(previous.blockBindings) !== JSON.stringify(updated.blockBindings);
+
+    if (tagsChanged) {
+      renderCardTags(currentCard);
+      renderExistingTagOptions(currentCard);
+    }
+
+    document.getElementById("card-timestamps").textContent =
+      "ID: " + currentCard.id + " · 创建于 " + formatTime(currentCard.createdAt) +
+      " · 更新于 " + formatTime(currentCard.updatedAt);
+
+    if (currentViewState.face === "prompt" && promptChanged) {
+      var promptEditor = document.getElementById("prompt-editor");
+      if (document.activeElement !== promptEditor) {
+        promptEditor.value = currentCard.prompt;
+      }
+    } else if (currentViewState.face === "notes") {
+      var notesEditor = document.getElementById("notes-editor");
+      if (notesChanged && (currentViewState.notesMode !== "edit" ||
+          document.activeElement !== notesEditor)) {
+        renderNotesFace(currentCard);
+      } else {
+        if (relatedChanged) renderRelatedCardsSection(currentCard);
+        if (bindingsChanged && currentViewState.notesMode === "preview") {
+          renderNotesPreviewBlocks(currentCard);
+        }
+        if (relatedChanged || bindingsChanged) renderBacklinksSidebar(currentCard);
+      }
+    } else if (currentViewState.face === "draft" && draftChanged) {
+      var draftEditor = document.getElementById("draft-editor");
+      if (document.activeElement !== draftEditor) {
+        draftEditor.innerHTML = currentCard.draftHtml;
+        updateDraftCharCount();
+      }
+    }
   }
 
   function showSaveIndicator(text) {
@@ -1322,6 +1443,10 @@
 
   // ==================== 事件绑定初始化 ====================
   function bindEvents() {
+    if (syncChannel) {
+      syncChannel.addEventListener("message", handleSyncMessage);
+    }
+
     // 卡片墙搜索与标签模式
     var searchInput = document.getElementById("search-input");
     var clearSearchBtn = document.getElementById("clear-search-btn");
@@ -1364,6 +1489,65 @@
       saveCardToDB(newCard).then(function () {
         openCard(newCard.id, "prompt", "edit", true);
         document.getElementById("prompt-editor").focus();
+      });
+    });
+
+    var batchCardModal = document.getElementById("batch-card-modal");
+    var batchCardInput = document.getElementById("batch-card-input");
+    var batchCardCount = document.getElementById("batch-card-count");
+    var confirmBatchCardBtn = document.getElementById("confirm-batch-card-btn");
+
+    function updateBatchCardCount() {
+      var count = batchCardInput.value.split(/\r?\n/).filter(function (line) {
+        return line.trim().length > 0;
+      }).length;
+      batchCardCount.textContent = count + " 张卡片";
+      confirmBatchCardBtn.disabled = count === 0;
+    }
+
+    document.getElementById("batch-card-btn").addEventListener("click", function () {
+      batchCardModal.classList.remove("hidden");
+      batchCardInput.focus();
+    });
+
+    batchCardInput.addEventListener("input", updateBatchCardCount);
+
+    confirmBatchCardBtn.addEventListener("click", function () {
+      var prompts = batchCardInput.value.split(/\r?\n/).map(function (line) {
+        return line.trim();
+      }).filter(function (line) {
+        return line.length > 0;
+      });
+      if (prompts.length === 0) return;
+
+      confirmBatchCardBtn.disabled = true;
+      confirmBatchCardBtn.textContent = "正在创建...";
+      var now = Date.now();
+      var newCards = prompts.map(function (prompt) {
+        return normalizeCard({
+          id: generateId(),
+          prompt: prompt,
+          notesMd: "",
+          draftHtml: "",
+          tags: [],
+          relatedCardIds: [],
+          blockBindings: [],
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null
+        });
+      });
+
+      saveCardsToDB(newCards).then(function () {
+        batchCardModal.classList.add("hidden");
+        batchCardInput.value = "";
+        updateBatchCardCount();
+        confirmBatchCardBtn.textContent = "创建卡片";
+        renderWall();
+      }, function (error) {
+        confirmBatchCardBtn.textContent = "创建卡片";
+        updateBatchCardCount();
+        alert("批量创建失败：" + (error && error.message ? error.message : error));
       });
     });
 

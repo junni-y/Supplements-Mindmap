@@ -825,6 +825,48 @@ button:disabled {
   border: 1px solid var(--border-color);
   border-radius: 6px;
 }
+
+.batch-card-textarea {
+  width: 100%;
+  min-height: 220px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.batch-card-textarea:focus {
+  border-color: var(--primary);
+  outline: 2px solid rgba(73, 102, 80, 0.18);
+  outline-offset: 1px;
+}
+
+#batch-card-modal .modal-footer {
+  align-items: center;
+}
+
+#batch-card-count {
+  margin-right: auto;
+}
+
+@media (max-width: 640px) {
+  .batch-card-textarea {
+    min-height: 180px;
+  }
+}
+
+@media (max-height: 500px) {
+  #batch-card-modal .modal-content {
+    overflow-y: auto;
+  }
+
+  .batch-card-textarea {
+    min-height: 110px;
+  }
+}
+
 .import-summary {
   background: #f8fafc;
   padding: 12px;
