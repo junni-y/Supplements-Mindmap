@@ -671,6 +671,7 @@
 
     // 3. 渲染卡片标签与时间戳
     renderCardTags(card);
+    renderExistingTagOptions(card);
     document.getElementById("card-timestamps").textContent =
       "ID: " + card.id + " · 创建于 " + formatTime(card.createdAt) + " · 更新于 " + formatTime(card.updatedAt);
 
@@ -699,9 +700,40 @@
         card.tags = card.tags.filter(function (t) { return t !== tag; });
         saveCardToDB(card);
         renderCardTags(card);
+        renderExistingTagOptions(card);
       });
       container.appendChild(pill);
     });
+  }
+
+  function renderExistingTagOptions(card) {
+    var container = document.getElementById("existing-tag-options");
+    var addButton = document.getElementById("add-existing-tag-btn");
+    var tags = {};
+
+    getActiveCards().forEach(function (activeCard) {
+      (activeCard.tags || []).forEach(function (tag) {
+        if (card.tags.indexOf(tag) === -1) tags[tag] = true;
+      });
+    });
+
+    container.innerHTML = "";
+    Object.keys(tags).sort().forEach(function (tag) {
+      var label = document.createElement("label");
+      label.className = "existing-tag-option";
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = tag;
+      var text = document.createElement("span");
+      text.textContent = tag;
+      label.appendChild(checkbox);
+      label.appendChild(text);
+      container.appendChild(label);
+    });
+    if (Object.keys(tags).length === 0) {
+      container.innerHTML = '<span class="hint">暂无可添加的已有标签</span>';
+    }
+    addButton.disabled = Object.keys(tags).length === 0;
   }
 
   // ==================== ② 笔记面：编辑态 / 预览态 / 块绑定 / 双向回链 ====================
@@ -1403,8 +1435,26 @@
             renderCardTags(card);
           }
           e.target.value = "";
+          renderExistingTagOptions(card);
         }
       }
+    });
+
+    document.getElementById("add-existing-tag-btn").addEventListener("click", function () {
+      var selectedTags = document.querySelectorAll("#existing-tag-options input:checked");
+      var card = cardsMap[currentViewState.cardId];
+      if (!card || selectedTags.length === 0) return;
+
+      Array.prototype.forEach.call(selectedTags, function (checkbox) {
+        if (card.tags.indexOf(checkbox.value) === -1) {
+          card.tags.push(checkbox.value);
+        }
+      });
+      saveCardToDB(card);
+      renderCardTags(card);
+      renderExistingTagOptions(card);
+      renderWall();
+      document.querySelector(".existing-tag-picker").open = false;
     });
 
     // ① 问题面实时保存
