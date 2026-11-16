@@ -41,6 +41,31 @@
       <!-- 搜索结果提示栏 -->
       <div id="search-status-bar" class="search-status hidden"></div>
 
+      <div id="selection-controls" class="selection-controls hidden">
+        <label class="select-visible-control">
+          <input id="select-visible-cards" type="checkbox" />
+          <span>全选当前结果（<span id="visible-card-count">0</span>）</span>
+        </label>
+        <div id="bulk-actions" class="bulk-actions hidden">
+          <strong id="selected-card-count">已选 0 张</strong>
+          <div class="bulk-tag-actions">
+            <div class="bulk-action-group">
+              <input id="bulk-tag-input" type="text" list="bulk-existing-tags" placeholder="选择或输入要添加的标签" />
+              <datalist id="bulk-existing-tags"></datalist>
+              <button id="bulk-add-tag-btn" class="btn-secondary" type="button">批量添加标签</button>
+            </div>
+            <div class="bulk-action-group">
+              <select id="bulk-remove-tag-select">
+                <option value="">选择要移除的标签</option>
+              </select>
+              <button id="bulk-remove-tag-btn" class="btn-secondary" type="button" disabled>批量移除标签</button>
+            </div>
+          </div>
+          <button id="bulk-delete-btn" class="btn-danger" type="button">移入回收站</button>
+          <button id="clear-card-selection-btn" class="btn-ghost" type="button">清空选择</button>
+        </div>
+      </div>
+
       <!-- 卡片网格 -->
       <main id="card-grid" class="card-grid"></main>
     </section>

@@ -17,7 +17,9 @@
   var wallState = {
     searchQuery: "",
     selectedTags: [],
-    tagMode: "AND" // "AND" | "OR"
+    tagMode: "AND", // "AND" | "OR"
+    selectedCardIds: [],
+    visibleCardIds: []
   };
 
   // 当前翻卡页状态
@@ -503,6 +505,9 @@
     var activeCards = getActiveCards();
     var trashedCards = getTrashedCards();
     document.getElementById("trash-count").textContent = trashedCards.length;
+    wallState.selectedCardIds = wallState.selectedCardIds.filter(function (id) {
+      return !!cardsMap[id] && !cardsMap[id].deletedAt;
+    });
 
     // 收集所有标签
     var tagCounts = {};
@@ -578,6 +583,9 @@
       }
     });
 
+    wallState.visibleCardIds = results.map(function (item) { return item.card.id; });
+    renderBulkActions();
+
     // 状态提示条
     var statusBar = document.getElementById("search-status-bar");
     if (query || wallState.selectedTags.length > 0) {
@@ -619,7 +627,8 @@
 
       el.innerHTML =
         '<div>' +
-          '<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;">' +
+          '<div class="card-item-heading">' +
+            '<label class="card-select-control"><input class="card-select-checkbox" type="checkbox" /><span class="sr-only">选择卡片</span></label>' +
             '<div class="card-item-title">' + escapeHtml(titleText) + '</div>' +
             '<span class="card-item-id">#' + shortId(card.id) + '</span>' +
           '</div>' +
@@ -631,13 +640,93 @@
           '<span>' + formatTime(card.updatedAt) + '</span>' +
         '</div>';
 
-      el.addEventListener("click", function () {
+      el.dataset.cardId = card.id;
+      var checkbox = el.querySelector(".card-select-checkbox");
+      checkbox.checked = wallState.selectedCardIds.indexOf(card.id) !== -1;
+      checkbox.setAttribute("aria-label", "选择卡片：" + titleText);
+      el.classList.toggle("selected", checkbox.checked);
+      checkbox.addEventListener("change", function () {
+        var index = wallState.selectedCardIds.indexOf(card.id);
+        if (checkbox.checked && index === -1) {
+          wallState.selectedCardIds.push(card.id);
+        } else if (!checkbox.checked && index !== -1) {
+          wallState.selectedCardIds.splice(index, 1);
+        }
+        el.classList.toggle("selected", checkbox.checked);
+        renderBulkActions();
+      });
+
+      el.addEventListener("click", function (event) {
+        if (event.target.closest(".card-select-control")) return;
         var targetFace = hit ? hit.face : "prompt";
         openCard(card.id, targetFace, "edit", true);
       });
 
       grid.appendChild(el);
     });
+  }
+
+  function getSelectedActiveCards() {
+    return wallState.selectedCardIds
+      .map(function (id) { return cardsMap[id]; })
+      .filter(function (card) { return !!card && !card.deletedAt; });
+  }
+
+  function renderBulkActions() {
+    var selectionControls = document.getElementById("selection-controls");
+    var bulkActions = document.getElementById("bulk-actions");
+    var selectedCards = getSelectedActiveCards();
+    var selectedIds = wallState.selectedCardIds;
+    var visibleIds = wallState.visibleCardIds;
+
+    selectionControls.classList.toggle("hidden", visibleIds.length === 0 && selectedCards.length === 0);
+    bulkActions.classList.toggle("hidden", selectedCards.length === 0);
+    document.getElementById("visible-card-count").textContent = visibleIds.length;
+    document.getElementById("selected-card-count").textContent = "已选 " + selectedCards.length + " 张";
+
+    var selectVisible = document.getElementById("select-visible-cards");
+    var visibleSelectedCount = visibleIds.filter(function (id) {
+      return selectedIds.indexOf(id) !== -1;
+    }).length;
+    selectVisible.checked = visibleIds.length > 0 && visibleSelectedCount === visibleIds.length;
+    selectVisible.indeterminate = visibleSelectedCount > 0 && visibleSelectedCount < visibleIds.length;
+
+    var existingTags = {};
+    getActiveCards().forEach(function (card) {
+      (card.tags || []).forEach(function (tag) { existingTags[tag] = true; });
+    });
+    var datalist = document.getElementById("bulk-existing-tags");
+    datalist.innerHTML = "";
+    Object.keys(existingTags).sort().forEach(function (tag) {
+      var option = document.createElement("option");
+      option.value = tag;
+      datalist.appendChild(option);
+    });
+
+    var removableTags = {};
+    selectedCards.forEach(function (card) {
+      (card.tags || []).forEach(function (tag) { removableTags[tag] = true; });
+    });
+    var removeSelect = document.getElementById("bulk-remove-tag-select");
+    var previousValue = removeSelect.value;
+    removeSelect.innerHTML = '<option value="">选择要移除的标签</option>';
+    Object.keys(removableTags).sort().forEach(function (tag) {
+      var option = document.createElement("option");
+      option.value = tag;
+      option.textContent = tag;
+      removeSelect.appendChild(option);
+    });
+    if (removableTags[previousValue]) removeSelect.value = previousValue;
+
+    var tagInput = document.getElementById("bulk-tag-input");
+    var requestedTag = tagInput.value.trim();
+    var alreadyApplied = requestedTag && selectedCards.every(function (card) {
+      return (card.tags || []).indexOf(requestedTag) !== -1;
+    });
+    document.getElementById("bulk-add-tag-btn").disabled =
+      selectedCards.length === 0 || !requestedTag || alreadyApplied;
+    document.getElementById("bulk-remove-tag-btn").disabled =
+      selectedCards.length === 0 || !removeSelect.value;
   }
 
   function findSearchHit(card, lowerQuery) {
@@ -1469,6 +1558,105 @@
       e.target.textContent = wallState.tagMode === "AND"
         ? "模式：同时满足 (AND)"
         : "模式：命中任一 (OR)";
+      renderWall();
+    });
+
+    document.getElementById("select-visible-cards").addEventListener("change", function (e) {
+      var visibleIds = wallState.visibleCardIds;
+      if (e.target.checked) {
+        visibleIds.forEach(function (id) {
+          if (wallState.selectedCardIds.indexOf(id) === -1) {
+            wallState.selectedCardIds.push(id);
+          }
+        });
+      } else {
+        wallState.selectedCardIds = wallState.selectedCardIds.filter(function (id) {
+          return visibleIds.indexOf(id) === -1;
+        });
+      }
+      renderWall();
+    });
+
+    var bulkTagInput = document.getElementById("bulk-tag-input");
+    var bulkRemoveTagSelect = document.getElementById("bulk-remove-tag-select");
+    var bulkAddTagBtn = document.getElementById("bulk-add-tag-btn");
+    var bulkRemoveTagBtn = document.getElementById("bulk-remove-tag-btn");
+    var bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+
+    bulkTagInput.addEventListener("input", renderBulkActions);
+    bulkRemoveTagSelect.addEventListener("change", renderBulkActions);
+
+    bulkAddTagBtn.addEventListener("click", function () {
+      var tag = bulkTagInput.value.trim();
+      var updates = [];
+      getSelectedActiveCards().forEach(function (card) {
+        if ((card.tags || []).indexOf(tag) !== -1) return;
+        var updatedCard = normalizeCard(card);
+        updatedCard.tags = (card.tags || []).concat([tag]);
+        updates.push(updatedCard);
+      });
+      if (!tag || updates.length === 0) return;
+
+      bulkAddTagBtn.disabled = true;
+      saveCardsToDB(updates).then(function () {
+        bulkTagInput.value = "";
+        renderWall();
+      }, function (error) {
+        renderBulkActions();
+        alert("批量添加标签失败：" + (error && error.message ? error.message : error));
+      });
+    });
+
+    bulkRemoveTagBtn.addEventListener("click", function () {
+      var tag = bulkRemoveTagSelect.value;
+      if (!tag) return;
+      var updates = [];
+      getSelectedActiveCards().forEach(function (card) {
+        if ((card.tags || []).indexOf(tag) === -1) return;
+        var updatedCard = normalizeCard(card);
+        updatedCard.tags = card.tags.filter(function (cardTag) { return cardTag !== tag; });
+        updates.push(updatedCard);
+      });
+      if (updates.length === 0) return;
+
+      bulkRemoveTagBtn.disabled = true;
+      saveCardsToDB(updates).then(function () {
+        renderWall();
+      }, function (error) {
+        renderBulkActions();
+        alert("批量移除标签失败：" + (error && error.message ? error.message : error));
+      });
+    });
+
+    bulkDeleteBtn.addEventListener("click", function () {
+      var selectedCards = getSelectedActiveCards();
+      if (selectedCards.length === 0) return;
+      if (!confirm("确定将选中的 " + selectedCards.length + " 张卡片移入回收站吗？可在回收站恢复。")) {
+        return;
+      }
+
+      var deletedAt = Date.now();
+      var updates = selectedCards.map(function (card) {
+        var updatedCard = normalizeCard(card);
+        updatedCard.deletedAt = deletedAt;
+        return updatedCard;
+      });
+      bulkDeleteBtn.disabled = true;
+      saveCardsToDB(updates).then(function () {
+        var deletedIds = updates.map(function (card) { return card.id; });
+        wallState.selectedCardIds = wallState.selectedCardIds.filter(function (id) {
+          return deletedIds.indexOf(id) === -1;
+        });
+        renderWall();
+      }, function (error) {
+        renderBulkActions();
+        alert("批量删除失败：" + (error && error.message ? error.message : error));
+      });
+    });
+
+    document.getElementById("clear-card-selection-btn").addEventListener("click", function () {
+      wallState.selectedCardIds = [];
+      bulkTagInput.value = "";
       renderWall();
     });
 
