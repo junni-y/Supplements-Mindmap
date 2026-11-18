@@ -78,6 +78,9 @@
           <button class="btn-ghost close-modal-btn" data-target="batch-card-modal" aria-label="关闭">✕</button>
         </div>
         <p class="hint">每个非空行创建一张卡片，只写入问题面；笔记面和成稿面保持空白。</p>
+        <label class="batch-card-tag-label" for="batch-card-tag-input">统一添加标签（可选）</label>
+        <input id="batch-card-tag-input" class="batch-card-tag-input" type="text" list="batch-existing-tags" placeholder="输入或选择已有标签" />
+        <datalist id="batch-existing-tags"></datalist>
         <textarea id="batch-card-input" class="batch-card-textarea" placeholder="每行输入一个问题，例如：&#10;问题一&#10;问题二&#10;问题三"></textarea>
         <div class="modal-footer">
           <span id="batch-card-count" class="hint">0 张卡片</span>

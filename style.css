@@ -950,6 +950,26 @@ button:disabled {
   line-height: 1.6;
 }
 
+.batch-card-tag-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: -8px;
+}
+
+.batch-card-tag-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  font: inherit;
+}
+
+.batch-card-tag-input:focus {
+  border-color: var(--primary);
+  outline: 2px solid rgba(73, 102, 80, 0.18);
+  outline-offset: 1px;
+}
+
 .batch-card-textarea:focus {
   border-color: var(--primary);
   outline: 2px solid rgba(73, 102, 80, 0.18);

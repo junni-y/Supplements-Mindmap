@@ -1682,6 +1682,7 @@
 
     var batchCardModal = document.getElementById("batch-card-modal");
     var batchCardInput = document.getElementById("batch-card-input");
+    var batchCardTagInput = document.getElementById("batch-card-tag-input");
     var batchCardCount = document.getElementById("batch-card-count");
     var confirmBatchCardBtn = document.getElementById("confirm-batch-card-btn");
 
@@ -1694,6 +1695,17 @@
     }
 
     document.getElementById("batch-card-btn").addEventListener("click", function () {
+      var existingTags = {};
+      getActiveCards().forEach(function (card) {
+        (card.tags || []).forEach(function (tag) { existingTags[tag] = true; });
+      });
+      var datalist = document.getElementById("batch-existing-tags");
+      datalist.innerHTML = "";
+      Object.keys(existingTags).sort().forEach(function (tag) {
+        var option = document.createElement("option");
+        option.value = tag;
+        datalist.appendChild(option);
+      });
       batchCardModal.classList.remove("hidden");
       batchCardInput.focus();
     });
@@ -1708,6 +1720,7 @@
       });
       if (prompts.length === 0) return;
 
+      var tag = batchCardTagInput.value.trim();
       confirmBatchCardBtn.disabled = true;
       confirmBatchCardBtn.textContent = "正在创建...";
       var now = Date.now();
@@ -1717,7 +1730,7 @@
           prompt: prompt,
           notesMd: "",
           draftHtml: "",
-          tags: [],
+          tags: tag ? [tag] : [],
           relatedCardIds: [],
           blockBindings: [],
           createdAt: now,
@@ -1729,6 +1742,7 @@
       saveCardsToDB(newCards).then(function () {
         batchCardModal.classList.add("hidden");
         batchCardInput.value = "";
+        batchCardTagInput.value = "";
         updateBatchCardCount();
         confirmBatchCardBtn.textContent = "创建卡片";
         renderWall();
