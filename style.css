@@ -548,6 +548,14 @@ button:disabled {
   padding: 0 24px 40px;
 }
 
+.card-view-footer {
+  display: flex;
+  justify-content: flex-end;
+  max-width: 1200px;
+  margin: -24px auto 28px;
+  padding: 0 24px;
+}
+
 .card-face {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
@@ -1399,6 +1407,11 @@ textarea:focus-visible,
   .card-workspace {
     margin: 14px auto;
     padding: 0 14px 28px;
+  }
+
+  .card-view-footer {
+    margin: -16px auto 20px;
+    padding: 0 14px;
   }
 
   .card-face {

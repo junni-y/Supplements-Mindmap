@@ -1781,6 +1781,21 @@
     // 翻卡页顶部导航
     document.getElementById("back-wall-btn").addEventListener("click", switchToWallView);
     document.getElementById("back-history-btn").addEventListener("click", goBackInCardHistory);
+    document.getElementById("save-card-and-return-btn").addEventListener("click", function (event) {
+      var card = cardsMap[currentViewState.cardId];
+      if (!card) return;
+
+      var button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = "保存中...";
+      saveCardToDB(card).then(function () {
+        switchToWallView();
+      }, function (error) {
+        button.disabled = false;
+        button.textContent = "保存";
+        alert("保存失败：" + (error && error.message ? error.message : error));
+      });
+    });
 
     // 浏览器后退事件支持
     window.addEventListener("popstate", function () {
