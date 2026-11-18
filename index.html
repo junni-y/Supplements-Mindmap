@@ -166,27 +166,27 @@
               <!-- 预览态（按块切分渲染） -->
               <div id="notes-preview-wrapper" class="preview-wrapper hidden"></div>
 
-              <!-- 底部固定：相关卡片手动清单 -->
-              <div class="related-cards-box">
-                <div class="section-sub-header">
-                  <h3>相关卡片（手动关联清单）</h3>
-                  <div class="add-related-control">
-                    <select id="related-card-select">
-                      <option value="">-- 选择要关联的卡片 --</option>
-                    </select>
-                    <button id="add-related-btn" class="btn-secondary btn-sm">添加关联</button>
+              <div class="card-links-module">
+                <section class="related-cards-section">
+                  <div class="section-sub-header">
+                    <h3>相关卡片（双向关联）</h3>
+                    <div class="add-related-control">
+                      <select id="related-card-select">
+                        <option value="">-- 选择要关联的卡片 --</option>
+                      </select>
+                      <button id="add-related-btn" class="btn-secondary btn-sm">添加关联</button>
+                    </div>
                   </div>
-                </div>
-                <ul id="related-cards-list" class="link-list"></ul>
+                  <ul id="related-cards-list" class="link-list"></ul>
+                </section>
+
+                <section class="backlinks-sidebar">
+                  <h3>被哪些卡片引用（反向回链）</h3>
+                  <p class="hint">自动汇总所有指向本卡的正文链接、块绑定与关联项</p>
+                  <ul id="backlinks-list" class="backlinks-list"></ul>
+                </section>
               </div>
             </div>
-
-            <!-- 右侧常驻：双向回链（被哪些卡片引用） -->
-            <aside class="backlinks-sidebar">
-              <h3>被哪些卡片引用（反向回链）</h3>
-              <p class="hint">自动汇总所有指向本卡的正文链接、块绑定与关联项</p>
-              <ul id="backlinks-list" class="backlinks-list"></ul>
-            </aside>
           </div>
         </div>
 

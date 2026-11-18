@@ -621,7 +621,7 @@ button:disabled {
 
 .notes-body-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -755,10 +755,15 @@ button:disabled {
 }
 
 /* 相关卡片与反向回链 */
-.related-cards-box {
+.card-links-module {
   margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-surface);
+}
+.related-cards-section {
+  padding: 16px;
 }
 .section-sub-header {
   display: flex;
@@ -814,8 +819,9 @@ button:disabled {
 
 .backlinks-sidebar {
   background: var(--bg-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
   padding: 16px;
 }
 .backlinks-sidebar h3 {
@@ -1257,17 +1263,16 @@ textarea:focus-visible,
 }
 
 .notes-body-layout {
-  grid-template-columns: minmax(0, 1fr) 270px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
 .backlinks-sidebar {
   background: var(--bg-muted);
-  border-color: var(--border-color);
-  border-radius: 9px;
+  border-radius: 0;
 }
 
-.related-cards-box {
+.card-links-module {
   margin-top: 18px;
 }
 

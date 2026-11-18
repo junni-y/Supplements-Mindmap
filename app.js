@@ -268,19 +268,6 @@
     cardsMap[updated.id] = updated;
     renderWall();
 
-    if (updated.deletedAt && currentViewState.cardId === updated.id) {
-      switchToWallView();
-      return;
-    }
-
-    var currentCard = cardsMap[currentViewState.cardId];
-    if (!currentCard) return;
-
-    if (currentCard.id !== updated.id) {
-      renderExistingTagOptions(currentCard);
-      return;
-    }
-
     var tagsChanged = !previous ||
       JSON.stringify(previous.tags) !== JSON.stringify(updated.tags);
     var promptChanged = !previous || previous.prompt !== updated.prompt;
@@ -290,6 +277,24 @@
       JSON.stringify(previous.relatedCardIds) !== JSON.stringify(updated.relatedCardIds);
     var bindingsChanged = !previous ||
       JSON.stringify(previous.blockBindings) !== JSON.stringify(updated.blockBindings);
+
+    if (updated.deletedAt && currentViewState.cardId === updated.id) {
+      switchToWallView();
+      return;
+    }
+
+    var currentCard = cardsMap[currentViewState.cardId];
+    if (!currentCard) return;
+
+    if (currentCard.id !== updated.id) {
+      if (currentViewState.face === "notes" &&
+          (promptChanged || notesChanged || relatedChanged || bindingsChanged)) {
+        renderRelatedCardsSection(currentCard);
+        renderBacklinksSidebar(currentCard);
+      }
+      renderExistingTagOptions(currentCard);
+      return;
+    }
 
     if (tagsChanged) {
       renderCardTags(currentCard);
@@ -1121,6 +1126,7 @@
 
     card.notesMd = textarea.value;
     saveCardToDB(card);
+    renderRelatedCardsSection(card);
 
     var cursorPos = textarea.selectionStart;
     var textBeforeCursor = textarea.value.slice(0, cursorPos);
@@ -1192,6 +1198,7 @@
     if (card) {
       card.notesMd = textarea.value;
       saveCardToDB(card);
+      renderRelatedCardsSection(card);
     }
     hideAutocomplete();
   }
@@ -1223,11 +1230,33 @@
 
   // ==================== 底部相关卡片清单与双向回链 ====================
   function renderRelatedCardsSection(card) {
+    var relationships = {};
+    function addRelationType(cardId, direction, type) {
+      if (cardId === card.id) return;
+      if (!relationships[cardId]) {
+        relationships[cardId] = { outgoingTypes: [], incomingTypes: [] };
+      }
+      var types = relationships[cardId][direction];
+      if (types.indexOf(type) === -1) types.push(type);
+    }
+
+    extractForwardRefsFromCard(card).forEach(function (ref) {
+      addRelationType(ref.targetCardId, "outgoingTypes", ref.type);
+    });
+
+    var backlinks = getBacklinksForCard(card.id);
+    backlinks.forEach(function (backlink) {
+      addRelationType(backlink.sourceCardId, "incomingTypes", backlink.type);
+    });
+
+    var relatedIds = Object.keys(relationships);
+    var relatedIdSet = {};
+    relatedIds.forEach(function (id) { relatedIdSet[id] = true; });
+
     var select = document.getElementById("related-card-select");
     select.innerHTML = '<option value="">-- 选择要关联的卡片 --</option>';
     getActiveCards().forEach(function (c) {
-      if (c.id === card.id) return;
-      if ((card.relatedCardIds || []).indexOf(c.id) !== -1) return;
+      if (c.id === card.id || relatedIdSet[c.id]) return;
       var opt = document.createElement("option");
       opt.value = c.id;
       opt.textContent = getCardDisplayTitle(c.id);
@@ -1236,16 +1265,16 @@
 
     var list = document.getElementById("related-cards-list");
     list.innerHTML = "";
-    var relatedIds = card.relatedCardIds || [];
 
     if (relatedIds.length === 0) {
-      list.innerHTML = '<li class="hint" style="background:transparent;border:none;padding:4px 0;">暂无手动关联卡片</li>';
+      list.innerHTML = '<li class="hint" style="background:transparent;border:none;padding:4px 0;">暂无相关卡片</li>';
       return;
     }
 
     relatedIds.forEach(function (targetId) {
       var targetCard = cardsMap[targetId];
       var isDeleted = !targetCard || !!targetCard.deletedAt;
+      var relation = relationships[targetId];
 
       var li = document.createElement("li");
       var titleSpan = document.createElement("span");
@@ -1258,17 +1287,36 @@
         });
       }
 
-      var removeBtn = document.createElement("button");
-      removeBtn.className = "btn-ghost btn-sm";
-      removeBtn.textContent = "移除";
-      removeBtn.addEventListener("click", function () {
-        card.relatedCardIds = card.relatedCardIds.filter(function (id) { return id !== targetId; });
-        saveCardToDB(card);
-        renderRelatedCardsSection(card);
+      li.appendChild(titleSpan);
+      var relationLabels = {
+        "正文链接": "正文引用",
+        "块绑定": "块绑定",
+        "关联列表": "手动关联"
+      };
+      relation.outgoingTypes.forEach(function (type) {
+        var relationTag = document.createElement("span");
+        relationTag.className = "ref-type-tag";
+        relationTag.textContent = relationLabels[type] || type;
+        li.appendChild(relationTag);
+      });
+      relation.incomingTypes.forEach(function (type) {
+        var backlinkTag = document.createElement("span");
+        backlinkTag.className = "ref-type-tag";
+        backlinkTag.textContent = type === "正文链接" ? "反向引用" : "反向" + type;
+        li.appendChild(backlinkTag);
       });
 
-      li.appendChild(titleSpan);
-      li.appendChild(removeBtn);
+      if (relation.outgoingTypes.indexOf("关联列表") !== -1) {
+        var removeBtn = document.createElement("button");
+        removeBtn.className = "btn-ghost btn-sm";
+        removeBtn.textContent = "移除";
+        removeBtn.addEventListener("click", function () {
+          card.relatedCardIds = card.relatedCardIds.filter(function (id) { return id !== targetId; });
+          saveCardToDB(card);
+          renderRelatedCardsSection(card);
+        });
+        li.appendChild(removeBtn);
+      }
       list.appendChild(li);
     });
   }
