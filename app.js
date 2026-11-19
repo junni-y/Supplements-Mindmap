@@ -119,7 +119,7 @@
   // 剥离 Markdown 标记，提取纯文本（用于全文检索）
   function stripMarkdown(md) {
     if (!md) return "";
-    return md
+    return stripNotesFormattingMarkup(md)
       .replace(/\[\[([a-zA-Z0-9_-]+)(?:\|[^\]]*)?\]\]/g, function (_, targetId) {
         var c = cardsMap[targetId];
         return c ? (c.prompt || "无题卡片") : "卡片已删除";
@@ -425,13 +425,19 @@
     // 匹配已有块绑定（优先按内容完全匹配，其次按哈希前缀匹配，未匹配到的旧绑定保留为 stale 提示）
     var usedBindingIndices = {};
     var blocks = rawBlocks.map(function (rb, idx) {
-      var normText = rb.text.trim();
+      var rawText = rb.text.trim();
+      var normText = stripNotesFormattingMarkup(rb.text)
+        .replace(/^#{1,6}\s+/, "")
+        .replace(/^([-*+]|\d+\.)\s+/, "")
+        .trim();
       var hash = computeTextHash(normText);
+      var rawHash = computeTextHash(rawText);
       var matchedBinding = null;
 
       // 1. 精确文本指纹匹配
       for (var i = 0; i < existingBindings.length; i++) {
-        if (!usedBindingIndices[i] && existingBindings[i].textHash === hash) {
+        if (!usedBindingIndices[i] &&
+            (existingBindings[i].textHash === hash || existingBindings[i].textHash === rawHash)) {
           usedBindingIndices[i] = true;
           matchedBinding = existingBindings[i];
           break;
@@ -442,8 +448,12 @@
       if (!matchedBinding && normText.length >= 4) {
         var prefix = normText.slice(0, 16);
         for (var j = 0; j < existingBindings.length; j++) {
-          if (!usedBindingIndices[j] && existingBindings[j].textSnapshot &&
-              existingBindings[j].textSnapshot.indexOf(prefix) === 0) {
+          var snapshot = stripNotesFormattingMarkup(existingBindings[j].textSnapshot || "")
+            .replace(/^#{1,6}\s+/, "")
+            .replace(/^([-*+]|\d+\.)\s+/, "")
+            .trim();
+          if (!usedBindingIndices[j] && snapshot &&
+              (snapshot.indexOf(prefix) === 0 || normText.indexOf(snapshot) === 0)) {
             usedBindingIndices[j] = true;
             matchedBinding = existingBindings[j];
             matchedBinding.textHash = hash;
@@ -1005,6 +1015,7 @@
     document.getElementById("notes-edit-mode-btn").classList.toggle("active", isEdit);
     document.getElementById("notes-preview-mode-btn").classList.toggle("active", !isEdit);
 
+    document.getElementById("notes-rich-toolbar").classList.toggle("hidden", !isEdit);
     document.getElementById("notes-editor-wrapper").classList.toggle("hidden", !isEdit);
     document.getElementById("notes-preview-wrapper").classList.toggle("hidden", isEdit);
 
@@ -1131,9 +1142,56 @@
     }
   }
 
+  function stripNotesFormattingMarkup(text) {
+    return (text || "")
+      .replace(/<span data-note-size="(?:13|16|18|24|32)">|<span data-note-color="#[0-9a-f]{6}">|<\/span>|<\/?u>|<\/?s>/gi, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1");
+  }
+
+  function escapeNotesMarkup(text) {
+    var html = "";
+    var stack = [];
+    var tagPattern = /<\/?span\b[^>]*>|<\/?u>|<\/?s>/gi;
+    var lastIndex = 0;
+    var match;
+
+    while ((match = tagPattern.exec(text)) !== null) {
+      html += escapeHtml(text.slice(lastIndex, match.index));
+      var tag = match[0];
+      var sizeMatch = /^<span data-note-size="(13|16|18|24|32)">$/i.exec(tag);
+      var colorMatch = /^<span data-note-color="(#[0-9a-f]{6})">$/i.exec(tag);
+
+      if (sizeMatch) {
+        html += '<span style="font-size:' + sizeMatch[1] + 'px">';
+        stack.push("span");
+      } else if (colorMatch) {
+        html += '<span style="color:' + colorMatch[1] + '">';
+        stack.push("span");
+      } else if (/^<(u|s)>$/i.test(tag)) {
+        var openingTag = tag.slice(1, -1).toLowerCase();
+        html += "<" + openingTag + ">";
+        stack.push(openingTag);
+      } else if (/^<\/(span|u|s)>$/i.test(tag) &&
+          stack.length > 0 &&
+          stack[stack.length - 1] === tag.slice(2, -1).toLowerCase()) {
+        html += "</" + stack.pop() + ">";
+      } else {
+        html += escapeHtml(tag);
+      }
+      lastIndex = tagPattern.lastIndex;
+    }
+
+    html += escapeHtml(text.slice(lastIndex));
+    while (stack.length > 0) {
+      html += "</" + stack.pop() + ">";
+    }
+    return html;
+  }
+
   // 渲染行内 Markdown 与 [[cardId]] 引用
   function renderInlineMarkdown(text) {
-    var html = escapeHtml(text);
+    var html = escapeNotesMarkup(text);
 
     // 标题渲染
     if (/^###\s+/.test(html)) {
@@ -1161,6 +1219,53 @@
     });
 
     return html.replace(/\n/g, "<br>");
+  }
+
+  function applyNotesInlineFormat(openTag, closeTag) {
+    var textarea = document.getElementById("notes-editor");
+    var value = textarea.value;
+    var start = textarea.selectionStart;
+    var end = textarea.selectionEnd;
+    var selectedText = value.slice(start, end);
+
+    if (!selectedText) {
+      selectedText = "文本";
+      textarea.setRangeText(openTag + selectedText + closeTag, start, end, "end");
+      textarea.setSelectionRange(start + openTag.length, start + openTag.length + selectedText.length);
+    } else {
+      var formattedText = selectedText.split(/\r?\n/).map(function (line) {
+        return line ? openTag + line + closeTag : line;
+      }).join("\n");
+      textarea.setRangeText(formattedText, start, end, "end");
+    }
+
+    textarea.focus();
+    handleNotesEditorInput({ target: textarea });
+  }
+
+  function applyNotesListPrefix(prefix) {
+    var textarea = document.getElementById("notes-editor");
+    var value = textarea.value;
+    var start = textarea.selectionStart;
+    var end = textarea.selectionEnd;
+    var lineStart = value.lastIndexOf("\n", start - 1) + 1;
+    var lineEnd = value.indexOf("\n", end);
+    if (lineEnd === -1) lineEnd = value.length;
+
+    var selectedLines = value.slice(lineStart, lineEnd).split(/\r?\n/);
+    var shouldRemovePrefix = selectedLines.filter(function (line) {
+      return line.trim().length > 0;
+    }).every(function (line) { return line.indexOf(prefix) === 0; });
+    var formattedLines = selectedLines.map(function (line) {
+      if (!line.trim()) return line;
+      return shouldRemovePrefix ? line.slice(prefix.length) : prefix + line;
+    });
+    var formattedText = formattedLines.join("\n");
+
+    textarea.setRangeText(formattedText, lineStart, lineEnd, "end");
+    textarea.setSelectionRange(lineStart, lineStart + formattedText.length);
+    textarea.focus();
+    handleNotesEditorInput({ target: textarea });
   }
 
   // ==================== [[ 自动补全选卡 ====================
@@ -1251,7 +1356,7 @@
   // ==================== 块绑定弹窗逻辑 ====================
   function openBlockBindModal(block) {
     editingBlockId = block.blockId;
-    document.getElementById("block-bind-preview-text").textContent = block.text;
+    document.getElementById("block-bind-preview-text").textContent = stripMarkdown(block.text);
 
     var select = document.getElementById("block-target-select");
     select.innerHTML = '<option value="">-- 请选择目标卡片 --</option>';
@@ -2027,6 +2132,35 @@
 
     var notesEditor = document.getElementById("notes-editor");
     notesEditor.addEventListener("input", handleNotesEditorInput);
+    var notesRichToolbar = document.getElementById("notes-rich-toolbar");
+    notesRichToolbar.querySelectorAll("button[data-note-before]").forEach(function (button) {
+      button.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+      });
+      button.addEventListener("click", function () {
+        applyNotesInlineFormat(
+          button.getAttribute("data-note-before"),
+          button.getAttribute("data-note-after")
+        );
+      });
+    });
+    notesRichToolbar.querySelectorAll("button[data-note-list-prefix]").forEach(function (button) {
+      button.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+      });
+      button.addEventListener("click", function () {
+        applyNotesListPrefix(button.getAttribute("data-note-list-prefix"));
+      });
+    });
+    document.getElementById("notes-font-size").addEventListener("change", function (event) {
+      var size = event.target.value;
+      if (!size) return;
+      applyNotesInlineFormat('<span data-note-size="' + size + '">', "</span>");
+      event.target.value = "";
+    });
+    document.getElementById("notes-text-color").addEventListener("change", function (event) {
+      applyNotesInlineFormat('<span data-note-color="' + event.target.value + '">', "</span>");
+    });
     notesEditor.addEventListener("keydown", function (e) {
       if (!acState.visible) return;
       if (e.key === "Escape") {

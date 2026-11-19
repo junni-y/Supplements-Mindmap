@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>文书卡片盒 · 本地版</title>
-  <link rel="stylesheet" href="style.css?v=20261119-theme-in-settings" />
+  <link rel="stylesheet" href="style.css?v=20261119-notes-rich-text" />
 </head>
 <body>
   <div id="app">
@@ -144,7 +144,7 @@
           <div class="face-header">
             <div class="notes-title-group">
               <h2>② 笔记面（想法与手写素材）</h2>
-              <span class="hint">输入 <code>[[</code> 可自动补全引用卡片</span>
+              <span class="hint">输入 <code>[[</code> 可自动补全引用；工具栏格式在预览态中显示</span>
             </div>
             <div class="mode-toggle">
               <button id="notes-edit-mode-btn" class="btn-mode active">编辑态 (Markdown)</button>
@@ -154,6 +154,25 @@
 
           <div class="notes-body-layout">
             <div class="notes-main-col">
+              <div id="notes-rich-toolbar" class="rich-toolbar">
+                <select id="notes-font-size" title="字号">
+                  <option value="" selected>字号</option>
+                  <option value="13">小号 (13px)</option>
+                  <option value="16">默认 (16px)</option>
+                  <option value="18">中大 (18px)</option>
+                  <option value="24">大号 (24px)</option>
+                  <option value="32">特大 (32px)</option>
+                </select>
+                <input type="color" id="notes-text-color" value="#1f2937" title="文字颜色" />
+                <span class="toolbar-divider"></span>
+                <button type="button" data-note-before="**" data-note-after="**" title="加粗"><b>B</b></button>
+                <button type="button" data-note-before="*" data-note-after="*" title="斜体"><i>I</i></button>
+                <button type="button" data-note-before="&lt;u&gt;" data-note-after="&lt;/u&gt;" title="下划线"><u>U</u></button>
+                <button type="button" data-note-before="&lt;s&gt;" data-note-after="&lt;/s&gt;" title="删除线"><s>S</s></button>
+                <span class="toolbar-divider"></span>
+                <button type="button" data-note-list-prefix="- " title="无序列表">• 列表</button>
+                <button type="button" data-note-list-prefix="1. " title="有序列表">1. 列表</button>
+              </div>
               <!-- 编辑态 -->
               <div id="notes-editor-wrapper" class="editor-wrapper">
                 <textarea id="notes-editor" placeholder="在此手写你的思路、素材提纲（支持基础 Markdown 与 [[卡片引用]]）..."></textarea>
@@ -337,6 +356,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261119-hide-card-id"></script>
+  <script src="app.js?v=20261119-notes-rich-text"></script>
 </body>
 </html>

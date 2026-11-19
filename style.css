@@ -715,6 +715,12 @@ button:disabled {
   resize: vertical;
   outline: none;
 }
+#notes-rich-toolbar {
+  border-radius: 9px 9px 0 0;
+}
+#notes-editor {
+  border-radius: 0 0 9px 9px;
+}
 #notes-editor:focus {
   border-color: var(--primary);
 }
