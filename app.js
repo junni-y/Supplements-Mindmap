@@ -1619,23 +1619,8 @@
 
   // ==================== 事件绑定初始化 ====================
   function bindEvents() {
-    var settingsButton = document.getElementById("settings-btn");
-    var settingsMenu = document.getElementById("settings-menu");
-    function setSettingsMenuOpen(isOpen) {
-      settingsMenu.classList.toggle("hidden", !isOpen);
-      settingsButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    }
-
-    settingsButton.addEventListener("click", function () {
-      setSettingsMenuOpen(settingsMenu.classList.contains("hidden"));
-    });
-    document.addEventListener("click", function (event) {
-      if (!settingsMenu.contains(event.target) && !settingsButton.contains(event.target)) {
-        setSettingsMenuOpen(false);
-      }
-    });
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") setSettingsMenuOpen(false);
+    document.getElementById("settings-btn").addEventListener("click", function () {
+      document.getElementById("settings-modal").classList.remove("hidden");
     });
 
     document.querySelectorAll(".theme-swatch").forEach(function (swatch) {
@@ -1876,11 +1861,11 @@
 
     // 导入 / 导出 / 回收站
     document.getElementById("export-btn").addEventListener("click", function () {
-      setSettingsMenuOpen(false);
+      document.getElementById("settings-modal").classList.add("hidden");
       exportAllToJson();
     });
     document.getElementById("import-btn").addEventListener("click", function () {
-      setSettingsMenuOpen(false);
+      document.getElementById("settings-modal").classList.add("hidden");
       document.getElementById("import-file-input").click();
     });
     document.getElementById("import-file-input").addEventListener("change", handleImportFileSelected);

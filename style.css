@@ -142,33 +142,14 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-.settings-control {
-  position: relative;
-}
-
-.settings-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 30;
-  width: 248px;
-  padding: 14px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  box-shadow: 0 12px 30px rgba(25, 35, 26, 0.14);
-}
-
 .settings-data-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .settings-theme {
-  padding-top: 12px;
+  padding: 8px 0;
 }
 
 .settings-label {
@@ -1434,20 +1415,6 @@ textarea:focus-visible,
     padding: 6px 4px;
     font-size: 12px;
     white-space: nowrap;
-  }
-
-  .settings-control {
-    flex: 1;
-  }
-
-  .settings-control > #settings-btn {
-    width: 100%;
-  }
-
-  .settings-menu button {
-    flex: initial;
-    padding: 6px 8px;
-    font-size: 13px;
   }
 
   .tag-filter-bar,
