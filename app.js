@@ -295,7 +295,13 @@
         switchToWallView();
       } else if (currentViewState.cardId) {
         var currentCard = cardsMap[currentViewState.cardId];
-        if (currentCard) renderExistingTagOptions(currentCard);
+        if (currentCard) {
+          renderExistingTagOptions(currentCard);
+          if (currentViewState.face !== "draft") {
+            renderRelatedCardsSection(currentCard);
+            renderBacklinksSidebar(currentCard);
+          }
+        }
       }
       return;
     }
@@ -326,7 +332,7 @@
     if (!currentCard) return;
 
     if (currentCard.id !== updated.id) {
-      if (currentViewState.face === "notes" &&
+      if (currentViewState.face !== "draft" &&
           (promptChanged || notesChanged || relatedChanged || bindingsChanged)) {
         renderRelatedCardsSection(currentCard);
         renderBacklinksSidebar(currentCard);
@@ -344,6 +350,11 @@
       "ID: " + currentCard.id + " · 创建于 " + formatTime(currentCard.createdAt) +
       " · 更新于 " + formatTime(currentCard.updatedAt);
 
+    if (currentViewState.face !== "draft" && (notesChanged || relatedChanged || bindingsChanged)) {
+      renderRelatedCardsSection(currentCard);
+      renderBacklinksSidebar(currentCard);
+    }
+
     if (currentViewState.face === "prompt" && promptChanged) {
       var promptEditor = document.getElementById("prompt-editor");
       if (document.activeElement !== promptEditor) {
@@ -355,11 +366,9 @@
           document.activeElement !== notesEditor)) {
         renderNotesFace(currentCard);
       } else {
-        if (relatedChanged) renderRelatedCardsSection(currentCard);
         if (bindingsChanged && currentViewState.notesMode === "preview") {
           renderNotesPreviewBlocks(currentCard);
         }
-        if (relatedChanged || bindingsChanged) renderBacklinksSidebar(currentCard);
       }
     } else if (currentViewState.face === "draft" && draftChanged) {
       var draftEditor = document.getElementById("draft-editor");
@@ -922,6 +931,7 @@
     document.getElementById("face-prompt").classList.toggle("hidden", currentViewState.face !== "prompt");
     document.getElementById("face-notes").classList.toggle("hidden", currentViewState.face !== "notes");
     document.getElementById("face-draft").classList.toggle("hidden", currentViewState.face !== "draft");
+    document.getElementById("card-links-module").classList.toggle("hidden", currentViewState.face === "draft");
 
     // 3. 渲染卡片标签与时间戳
     renderCardTags(card);
@@ -940,6 +950,10 @@
         draftEditor.innerHTML = card.draftHtml;
       }
       updateDraftCharCount();
+    }
+    if (currentViewState.face !== "draft") {
+      renderRelatedCardsSection(card);
+      renderBacklinksSidebar(card);
     }
   }
 
@@ -1005,8 +1019,6 @@
       renderNotesPreviewBlocks(card);
     }
 
-    renderRelatedCardsSection(card);
-    renderBacklinksSidebar(card);
   }
 
   function renderNotesPreviewBlocks(card) {

@@ -163,27 +163,6 @@
 
               <!-- 预览态（按块切分渲染） -->
               <div id="notes-preview-wrapper" class="preview-wrapper hidden"></div>
-
-              <div class="card-links-module">
-                <section class="related-cards-section">
-                  <div class="section-sub-header">
-                    <h3>相关卡片（双向关联）</h3>
-                    <div class="add-related-control">
-                      <select id="related-card-select">
-                        <option value="">-- 选择要关联的卡片 --</option>
-                      </select>
-                      <button id="add-related-btn" class="btn-secondary btn-sm">添加关联</button>
-                    </div>
-                  </div>
-                  <ul id="related-cards-list" class="link-list"></ul>
-                </section>
-
-                <section class="backlinks-sidebar">
-                  <h3>被哪些卡片引用（反向回链）</h3>
-                  <p class="hint">自动汇总所有指向本卡的正文链接、块绑定与关联项</p>
-                  <ul id="backlinks-list" class="backlinks-list"></ul>
-                </section>
-              </div>
             </div>
           </div>
         </div>
@@ -226,6 +205,27 @@
 
           <!-- 独立富文本编辑区（不渲染Markdown、不支持[[链接]]、不设块绑定） -->
           <div id="draft-editor" class="draft-editor" contenteditable="true" data-placeholder="在此撰写或粘贴最终成稿（支持富文本排版，与笔记面数据完全隔离）..."></div>
+        </div>
+
+        <div id="card-links-module" class="card-links-module">
+          <section class="related-cards-section">
+            <div class="section-sub-header">
+              <h3>相关卡片（双向关联）</h3>
+              <div class="add-related-control">
+                <select id="related-card-select">
+                  <option value="">-- 选择要关联的卡片 --</option>
+                </select>
+                <button id="add-related-btn" class="btn-secondary btn-sm">添加关联</button>
+              </div>
+            </div>
+            <ul id="related-cards-list" class="link-list"></ul>
+          </section>
+
+          <section class="backlinks-sidebar">
+            <h3>被哪些卡片引用（反向回链）</h3>
+            <p class="hint">自动汇总所有指向本卡的正文链接、块绑定与关联项</p>
+            <ul id="backlinks-list" class="backlinks-list"></ul>
+          </section>
         </div>
       </div>
       <div class="card-view-footer">
