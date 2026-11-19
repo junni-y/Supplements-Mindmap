@@ -1352,13 +1352,25 @@
         li.appendChild(backlinkTag);
       });
 
-      if (relation.outgoingTypes.indexOf("关联列表") !== -1) {
+      if (relation.outgoingTypes.indexOf("关联列表") !== -1 ||
+          relation.incomingTypes.indexOf("关联列表") !== -1) {
         var removeBtn = document.createElement("button");
         removeBtn.className = "btn-ghost btn-sm";
         removeBtn.textContent = "移除";
         removeBtn.addEventListener("click", function () {
-          card.relatedCardIds = card.relatedCardIds.filter(function (id) { return id !== targetId; });
-          saveCardToDB(card);
+          var relatedCards = [card];
+          if (targetCard && targetCard.id !== card.id) relatedCards.push(targetCard);
+          var cardsToSave = [];
+          relatedCards.forEach(function (relatedCard) {
+            var relatedId = relatedCard.id === card.id ? targetId : card.id;
+            var relatedCardIds = relatedCard.relatedCardIds || [];
+            var updatedRelatedCardIds = relatedCardIds.filter(function (id) { return id !== relatedId; });
+            if (updatedRelatedCardIds.length !== relatedCardIds.length) {
+              relatedCard.relatedCardIds = updatedRelatedCardIds;
+              cardsToSave.push(relatedCard);
+            }
+          });
+          if (cardsToSave.length > 0) saveCardsToDB(cardsToSave);
           renderRelatedCardsSection(card);
         });
         li.appendChild(removeBtn);
