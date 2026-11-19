@@ -6,6 +6,8 @@
   var DB_NAME = "EssayCardBoxDB";
   var DB_VERSION = 1;
   var STORE_NAME = "cards";
+  var THEME_STORAGE_KEY = "essay-card-box-theme-color";
+  var THEME_COLORS = ["#496650", "#4f6f9f", "#79638f", "#aa6269", "#a8753c"];
 
   var db = null;
   var syncChannel = typeof BroadcastChannel !== "undefined"
@@ -75,6 +77,43 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function applyThemeColor(color, persist) {
+    if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+    var red = parseInt(color.slice(1, 3), 16);
+    var green = parseInt(color.slice(3, 5), 16);
+    var blue = parseInt(color.slice(5, 7), 16);
+    var hoverColor = "#" + [red, green, blue].map(function (value) {
+      var hex = Math.round(value * 0.8).toString(16);
+      return hex.length < 2 ? "0" + hex : hex;
+    }).join("");
+
+    document.documentElement.style.setProperty("--primary", color);
+    document.documentElement.style.setProperty("--primary-hover", hoverColor);
+    document.getElementById("theme-color-picker").value = color;
+    document.querySelectorAll(".theme-swatch").forEach(function (swatch) {
+      var isSelected = swatch.getAttribute("data-theme-color").toLowerCase() === color.toLowerCase();
+      swatch.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+
+    if (persist) {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, color);
+      } catch (error) {
+        alert("主题颜色无法保存到本地：" + (error && error.message ? error.message : error));
+      }
+    }
+  }
+
+  function loadThemeColor() {
+    try {
+      var savedColor = localStorage.getItem(THEME_STORAGE_KEY);
+      applyThemeColor(/^#[0-9a-f]{6}$/i.test(savedColor || "") ? savedColor : THEME_COLORS[0], false);
+    } catch (error) {
+      applyThemeColor(THEME_COLORS[0], false);
+      alert("读取主题颜色失败：" + (error && error.message ? error.message : error));
+    }
   }
 
   // 剥离 Markdown 标记，提取纯文本（用于全文检索）
@@ -1580,6 +1619,40 @@
 
   // ==================== 事件绑定初始化 ====================
   function bindEvents() {
+    var settingsButton = document.getElementById("settings-btn");
+    var settingsMenu = document.getElementById("settings-menu");
+    function setSettingsMenuOpen(isOpen) {
+      settingsMenu.classList.toggle("hidden", !isOpen);
+      settingsButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    }
+
+    settingsButton.addEventListener("click", function () {
+      setSettingsMenuOpen(settingsMenu.classList.contains("hidden"));
+    });
+    document.addEventListener("click", function (event) {
+      if (!settingsMenu.contains(event.target) && !settingsButton.contains(event.target)) {
+        setSettingsMenuOpen(false);
+      }
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") setSettingsMenuOpen(false);
+    });
+
+    document.querySelectorAll(".theme-swatch").forEach(function (swatch) {
+      var color = swatch.getAttribute("data-theme-color");
+      swatch.style.setProperty("--swatch-color", color);
+      swatch.addEventListener("click", function () {
+        applyThemeColor(color, true);
+      });
+    });
+    var themeColorPicker = document.getElementById("theme-color-picker");
+    themeColorPicker.addEventListener("input", function (event) {
+      applyThemeColor(event.target.value, false);
+    });
+    themeColorPicker.addEventListener("change", function (event) {
+      applyThemeColor(event.target.value, true);
+    });
+
     if (syncChannel) {
       syncChannel.addEventListener("message", handleSyncMessage);
     }
@@ -1802,8 +1875,12 @@
     });
 
     // 导入 / 导出 / 回收站
-    document.getElementById("export-btn").addEventListener("click", exportAllToJson);
+    document.getElementById("export-btn").addEventListener("click", function () {
+      setSettingsMenuOpen(false);
+      exportAllToJson();
+    });
     document.getElementById("import-btn").addEventListener("click", function () {
+      setSettingsMenuOpen(false);
       document.getElementById("import-file-input").click();
     });
     document.getElementById("import-file-input").addEventListener("change", handleImportFileSelected);
@@ -2038,6 +2115,7 @@
   }
 
   // ==================== 启动入口 ====================
+  loadThemeColor();
   initDB()
     .then(loadAllCardsFromDB)
     .then(function () {
