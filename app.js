@@ -299,7 +299,6 @@
           renderExistingTagOptions(currentCard);
           if (currentViewState.face !== "draft") {
             renderRelatedCardsSection(currentCard);
-            renderBacklinksSidebar(currentCard);
           }
         }
       }
@@ -335,7 +334,6 @@
       if (currentViewState.face !== "draft" &&
           (promptChanged || notesChanged || relatedChanged || bindingsChanged)) {
         renderRelatedCardsSection(currentCard);
-        renderBacklinksSidebar(currentCard);
       }
       renderExistingTagOptions(currentCard);
       return;
@@ -352,7 +350,6 @@
 
     if (currentViewState.face !== "draft" && (notesChanged || relatedChanged || bindingsChanged)) {
       renderRelatedCardsSection(currentCard);
-      renderBacklinksSidebar(currentCard);
     }
 
     if (currentViewState.face === "prompt" && promptChanged) {
@@ -477,8 +474,8 @@
     return { blocks: blocks, staleBindings: staleBindings };
   }
 
-  // ==================== 统一引用关系与双向回链推导引擎 ====================
-  // 正向引用与反向回链全部由同一份数据实时推导，避免双写不同步
+  // ==================== 统一引用关系与双向关联推导引擎 ====================
+  // 正向引用与反向关联全部由同一份数据实时推导，避免双写不同步
   function extractForwardRefsFromCard(card) {
     var refs = [];
     if (!card || card.deletedAt) return refs;
@@ -953,7 +950,6 @@
     }
     if (currentViewState.face !== "draft") {
       renderRelatedCardsSection(card);
-      renderBacklinksSidebar(card);
     }
   }
 
@@ -1127,7 +1123,6 @@
           card.blockBindings = card.blockBindings.filter(function (b) { return b.blockId !== sb.blockId; });
           saveCardToDB(card);
           renderNotesPreviewBlocks(card);
-          renderBacklinksSidebar(card);
         });
         row.appendChild(delStaleBtn);
         staleBox.appendChild(row);
@@ -1279,7 +1274,7 @@
     document.getElementById("block-bind-modal").classList.remove("hidden");
   }
 
-  // ==================== 底部相关卡片清单与双向回链 ====================
+  // ==================== 底部相关卡片清单与双向关联 ====================
   function renderRelatedCardsSection(card) {
     var relationships = {};
     function addRelationType(cardId, direction, type) {
@@ -1368,38 +1363,6 @@
         });
         li.appendChild(removeBtn);
       }
-      list.appendChild(li);
-    });
-  }
-
-  function renderBacklinksSidebar(card) {
-    var list = document.getElementById("backlinks-list");
-    list.innerHTML = "";
-    var backlinks = getBacklinksForCard(card.id);
-
-    if (backlinks.length === 0) {
-      list.innerHTML = '<li class="hint" style="background:transparent;border:none;padding:4px 0;">暂无其他卡片引用本卡</li>';
-      return;
-    }
-
-    backlinks.forEach(function (bl) {
-      var li = document.createElement("li");
-      var left = document.createElement("div");
-
-      var titleSpan = document.createElement("span");
-      titleSpan.className = "link-title";
-      titleSpan.textContent = getCardDisplayTitle(bl.sourceCardId);
-      titleSpan.addEventListener("click", function () {
-        openCard(bl.sourceCardId, "notes", "preview", true);
-      });
-
-      var typeBadge = document.createElement("span");
-      typeBadge.className = "ref-type-tag";
-      typeBadge.textContent = bl.type;
-
-      left.appendChild(titleSpan);
-      left.appendChild(typeBadge);
-      li.appendChild(left);
       list.appendChild(li);
     });
   }
