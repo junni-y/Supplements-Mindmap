@@ -831,15 +831,33 @@ button:disabled {
 .section-sub-header h3 {
   font-size: 15px;
 }
-.add-related-control {
+.related-card-picker {
   display: flex;
-  gap: 6px;
-}
-.add-related-control select {
-  max-width: 260px;
-  padding: 4px 8px;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 280px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 6px 8px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
+  background: var(--bg-surface);
+}
+.related-card-picker.modal-related-card-picker {
+  max-width: none;
+  min-height: 120px;
+  max-height: 45vh;
+}
+.related-card-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.related-card-option input {
+  margin: 0;
 }
 
 .link-list {
@@ -1493,15 +1511,9 @@ textarea:focus-visible,
     padding: 6px 5px;
   }
 
-  .section-sub-header,
-  .add-related-control {
+  .section-sub-header {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .add-related-control select {
-    max-width: none;
-    min-height: 36px;
   }
 
   .modal {

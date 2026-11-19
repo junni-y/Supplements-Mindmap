@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>文书卡片盒 · 本地版</title>
-  <link rel="stylesheet" href="style.css?v=20261119-settings-modal" />
+  <link rel="stylesheet" href="style.css?v=20261119-related-modal" />
 </head>
 <body>
   <div id="app">
@@ -211,12 +211,7 @@
           <section class="related-cards-section">
             <div class="section-sub-header">
               <h3>相关卡片（双向关联）</h3>
-              <div class="add-related-control">
-                <select id="related-card-select">
-                  <option value="">-- 选择要关联的卡片 --</option>
-                </select>
-                <button id="add-related-btn" class="btn-secondary btn-sm">添加关联</button>
-              </div>
+              <button id="open-related-cards-modal-btn" class="btn-secondary btn-sm" type="button" aria-haspopup="dialog" aria-controls="related-cards-modal">添加关联</button>
             </div>
             <ul id="related-cards-list" class="link-list"></ul>
           </section>
@@ -273,6 +268,22 @@
       </div>
     </div>
 
+    <!-- ==================== 关联卡片弹窗 ==================== -->
+    <div id="related-cards-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="related-cards-modal-title">
+      <div class="modal-content modal-lg">
+        <div class="modal-header">
+          <h2 id="related-cards-modal-title">添加关联卡片</h2>
+          <button class="btn-ghost close-modal-btn" data-target="related-cards-modal" aria-label="关闭">✕</button>
+        </div>
+        <p class="hint">勾选一张或多张卡片，再确认添加关联。</p>
+        <div id="related-card-picker" class="related-card-picker modal-related-card-picker" role="group" aria-label="选择要关联的卡片"></div>
+        <div class="modal-footer">
+          <button class="btn-secondary close-modal-btn" data-target="related-cards-modal">取消</button>
+          <button id="add-related-btn" class="btn-primary" type="button" disabled>添加所选关联</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 模态框 2：块绑定选择器 ==================== -->
     <div id="block-bind-modal" class="modal hidden">
       <div class="modal-content">
@@ -309,6 +320,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261119-related-remove"></script>
+  <script src="app.js?v=20261119-related-modal"></script>
 </body>
 </html>

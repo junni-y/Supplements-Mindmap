@@ -1299,15 +1299,35 @@
     var relatedIdSet = {};
     relatedIds.forEach(function (id) { relatedIdSet[id] = true; });
 
-    var select = document.getElementById("related-card-select");
-    select.innerHTML = '<option value="">-- 选择要关联的卡片 --</option>';
+    var picker = document.getElementById("related-card-picker");
+    var selectedIds = {};
+    var previouslySelected = picker.querySelectorAll('input[type="checkbox"]:checked');
+    for (var i = 0; i < previouslySelected.length; i++) {
+      selectedIds[previouslySelected[i].value] = true;
+    }
+    picker.innerHTML = "";
     getActiveCards().forEach(function (c) {
       if (c.id === card.id || relatedIdSet[c.id]) return;
-      var opt = document.createElement("option");
-      opt.value = c.id;
-      opt.textContent = getCardDisplayTitle(c.id);
-      select.appendChild(opt);
+      var label = document.createElement("label");
+      label.className = "related-card-option";
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = c.id;
+      checkbox.checked = selectedIds[c.id] === true;
+      var title = document.createElement("span");
+      title.textContent = getCardDisplayTitle(c.id);
+      label.appendChild(checkbox);
+      label.appendChild(title);
+      picker.appendChild(label);
     });
+    if (picker.children.length === 0) {
+      var emptyHint = document.createElement("span");
+      emptyHint.className = "hint";
+      emptyHint.textContent = "暂无可关联的卡片";
+      picker.appendChild(emptyHint);
+    }
+    document.getElementById("add-related-btn").disabled =
+      picker.querySelector('input[type="checkbox"]:checked') === null;
 
     var list = document.getElementById("related-cards-list");
     list.innerHTML = "";
@@ -1608,6 +1628,24 @@
   function bindEvents() {
     document.getElementById("settings-btn").addEventListener("click", function () {
       document.getElementById("settings-modal").classList.remove("hidden");
+    });
+
+    var relatedCardsModal = document.getElementById("related-cards-modal");
+    var relatedCardPicker = document.getElementById("related-card-picker");
+    var addRelatedButton = document.getElementById("add-related-btn");
+    document.getElementById("open-related-cards-modal-btn").addEventListener("click", function () {
+      var card = cardsMap[currentViewState.cardId];
+      if (!card) return;
+      renderRelatedCardsSection(card);
+      relatedCardsModal.classList.remove("hidden");
+    });
+    relatedCardsModal.querySelectorAll(".close-modal-btn").forEach(function (button) {
+      button.addEventListener("click", function () {
+        relatedCardPicker.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+          checkbox.checked = false;
+        });
+        addRelatedButton.disabled = true;
+      });
     });
 
     document.querySelectorAll(".theme-swatch").forEach(function (swatch) {
@@ -1998,15 +2036,33 @@
     });
 
     // 手动添加底部相关卡片
-    document.getElementById("add-related-btn").addEventListener("click", function () {
-      var select = document.getElementById("related-card-select");
-      var targetId = select.value;
+    relatedCardPicker.addEventListener("change", function () {
+      addRelatedButton.disabled =
+        relatedCardPicker.querySelector('input[type="checkbox"]:checked') === null;
+    });
+    addRelatedButton.addEventListener("click", function () {
       var card = cardsMap[currentViewState.cardId];
-      if (targetId && card && card.relatedCardIds.indexOf(targetId) === -1) {
-        card.relatedCardIds.push(targetId);
-        saveCardToDB(card);
-        renderRelatedCardsSection(card);
+      if (!card) return;
+
+      var selectedIds = [];
+      var selectedCheckboxes = relatedCardPicker.querySelectorAll('input[type="checkbox"]:checked');
+      for (var i = 0; i < selectedCheckboxes.length; i++) {
+        selectedIds.push(selectedCheckboxes[i].value);
       }
+      if (selectedIds.length === 0) return;
+
+      var addedRelation = false;
+      selectedIds.forEach(function (targetId) {
+        if (card.relatedCardIds.indexOf(targetId) === -1) {
+          card.relatedCardIds.push(targetId);
+          addedRelation = true;
+        }
+      });
+      if (!addedRelation) return;
+
+      saveCardToDB(card);
+      renderRelatedCardsSection(card);
+      relatedCardsModal.classList.add("hidden");
     });
 
     // 块绑定模态框保存与解绑
