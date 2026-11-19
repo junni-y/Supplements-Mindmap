@@ -1629,6 +1629,17 @@
     document.getElementById("settings-btn").addEventListener("click", function () {
       document.getElementById("settings-modal").classList.remove("hidden");
     });
+    var settingsModal = document.getElementById("settings-modal");
+    var themeModal = document.getElementById("theme-modal");
+    document.getElementById("theme-btn").addEventListener("click", function () {
+      settingsModal.classList.add("hidden");
+      themeModal.classList.remove("hidden");
+    });
+    themeModal.querySelectorAll(".close-modal-btn").forEach(function (button) {
+      button.addEventListener("click", function () {
+        settingsModal.classList.remove("hidden");
+      });
+    });
 
     var relatedCardsModal = document.getElementById("related-cards-modal");
     var relatedCardPicker = document.getElementById("related-card-picker");

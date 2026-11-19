@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>文书卡片盒 · 本地版</title>
-  <link rel="stylesheet" href="style.css?v=20261119-related-modal" />
+  <link rel="stylesheet" href="style.css?v=20261119-theme-in-settings" />
 </head>
 <body>
   <div id="app">
@@ -244,13 +244,30 @@
           <h2 id="settings-modal-title">设置</h2>
           <button class="btn-ghost close-modal-btn" data-target="settings-modal" aria-label="关闭">✕</button>
         </div>
+        <div class="settings-theme-entry">
+          <span class="settings-label">外观</span>
+          <button id="theme-btn" class="btn-secondary" type="button" aria-haspopup="dialog" aria-controls="theme-modal">更换主题颜色</button>
+        </div>
         <div class="settings-data-actions">
           <button id="import-btn" class="btn-secondary" type="button">导入 JSON</button>
           <button id="export-btn" class="btn-secondary" type="button">导出 JSON</button>
           <input type="file" id="import-file-input" accept=".json" class="hidden" />
         </div>
-        <div class="settings-theme">
-          <span class="settings-label">主题颜色</span>
+        <div class="modal-footer">
+          <button class="btn-secondary close-modal-btn" data-target="settings-modal">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 主题颜色弹窗 ==================== -->
+    <div id="theme-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="theme-modal-title">
+      <div class="modal-content modal-lg">
+        <div class="modal-header">
+          <h2 id="theme-modal-title">更换主题颜色</h2>
+          <button class="btn-ghost close-modal-btn" data-target="theme-modal" aria-label="关闭">✕</button>
+        </div>
+        <div class="theme-color-settings">
+          <span class="settings-label">推荐色系</span>
           <div class="theme-swatches" aria-label="推荐色系">
             <button class="theme-swatch" type="button" data-theme-color="#496650" aria-label="森林绿" title="森林绿"></button>
             <button class="theme-swatch" type="button" data-theme-color="#4f6f9f" aria-label="海湾蓝" title="海湾蓝"></button>
@@ -263,7 +280,7 @@
           </label>
         </div>
         <div class="modal-footer">
-          <button class="btn-secondary close-modal-btn" data-target="settings-modal">完成</button>
+          <button class="btn-secondary close-modal-btn" data-target="theme-modal">完成</button>
         </div>
       </div>
     </div>
@@ -320,6 +337,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261119-related-modal"></script>
+  <script src="app.js?v=20261119-theme-in-settings"></script>
 </body>
 </html>
