@@ -148,7 +148,19 @@ button:disabled {
   gap: 8px;
 }
 
-.settings-theme {
+.settings-theme-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.settings-theme-entry .settings-label {
+  margin-bottom: 0;
+}
+
+.theme-color-settings {
   padding: 8px 0;
 }
 

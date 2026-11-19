@@ -680,7 +680,6 @@
           '<div class="card-item-heading">' +
             '<label class="card-select-control"><input class="card-select-checkbox" type="checkbox" /><span class="sr-only">选择卡片</span></label>' +
             '<div class="card-item-title">' + escapeHtml(titleText) + '</div>' +
-            '<span class="card-item-id">#' + shortId(card.id) + '</span>' +
           '</div>' +
           hitHtml +
           '<div class="tag-pills" style="margin-top:8px;">' + tagsHtml + '</div>' +
@@ -1628,6 +1627,17 @@
   function bindEvents() {
     document.getElementById("settings-btn").addEventListener("click", function () {
       document.getElementById("settings-modal").classList.remove("hidden");
+    });
+    var settingsModal = document.getElementById("settings-modal");
+    var themeModal = document.getElementById("theme-modal");
+    document.getElementById("theme-btn").addEventListener("click", function () {
+      settingsModal.classList.add("hidden");
+      themeModal.classList.remove("hidden");
+    });
+    themeModal.querySelectorAll(".close-modal-btn").forEach(function (button) {
+      button.addEventListener("click", function () {
+        settingsModal.classList.remove("hidden");
+      });
     });
 
     var relatedCardsModal = document.getElementById("related-cards-modal");
